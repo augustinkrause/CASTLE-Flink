@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0e1bcc2d-cb3a-4b91-a155-690aa0ca1673" name="Default Changelist" comment="" />
+    <list default="true" id="0e1bcc2d-cb3a-4b91-a155-690aa0ca1673" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -54,8 +58,10 @@
   </component>
   <component name="RunManager">
     <configuration name="TransactionGeneralizationJob" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="ALTERNATIVE_JRE_PATH" value="1.8" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
       <option name="MAIN_CLASS_NAME" value="spendreport.TransactionGeneralizationJob" />
-      <module name="frauddetection" />
+      <module name="FirstGeneralizer" />
       <extension name="coverage">
         <pattern>
           <option name="PATTERN" value="spendreport.*" />
