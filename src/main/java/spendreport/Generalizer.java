@@ -155,71 +155,29 @@ public class Generalizer extends KeyedProcessFunction<Long, Transaction, Alert> 
 		this.clusters.remove(0);
 	}
 
-	//this performs the splitting specified in the CASTLE algorithm
+	//this performs the splitting specified in the CASTLE algorithm WITHOUT adhering to l-diversity principle
 	//it is a variant of a KNN algorithm
 	public ArrayList<Cluster> split(Cluster c){
 		ArrayList<Cluster> newClusters = new ArrayList<Cluster>(); //will hold all the newly generated clusters
 
-		while(c.tuples.size() >= k){
+		while(c.tuples.size() >= this.k){
 			Transaction t = c.tuples.poll()._1; //TODO: In the original Algorithm they select a tuple randomly
 			Cluster newCluster = new Cluster(t); //form a new cluster over the randomly picked element
 
-			//this hash map will contain the so called groups
-			//in the algorithm it is assumed, that all elements with the same pid (i.e. accountid) have the same distance to t
-			//these elements form a group, along with each group (keyed by accountid) we store their distance to t
-			HashMap<Long, Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double>> groups = new HashMap<>();
-
+			//find k-1 NNs
+			PriorityQueue<Tuple2<Tuple2<Transaction, Long>, Double>> sortedElements = new PriorityQueue<>(new GroupComparator()); //used for sorting by distance to t
 			Iterator<Tuple2<Transaction, Long>> it = c.tuples.iterator();
-			//calculate each groups distance to t
+			//calculate each element's distance to t
 			while(it.hasNext()){
 				Tuple2<Transaction, Long> t_i = it.next(); //the transaction along with its timestamp (which is needed later)
-				if(groups.containsKey(t_i._1.getAccountId())){
-					//in this case don't update the loss, as its the same for all tuples in a group
-					Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> group_i = groups.get(t_i._1.getAccountId());
-					group_i._1.add(t_i); //we only need t add the <Transaction, Timestamp> to the group
-					groups.put(t_i._1.getAccountId(), group_i);
-				}else{
-					//initialize the group
-					double loss_i = newCluster.lossDueToEnlargement(t_i._1, this.globLowerBound, this.globUpperBound);
-					ArrayList<Tuple2<Transaction, Long>> ts = new ArrayList<>(); //these are the <Transaction, Timestamp> Tuples
-					ts.add(t_i);
-					Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> group_i = new Tuple2<>(ts, loss_i); //store the (for now) 1-element list + calculated loss
-					groups.put(t_i._1.getAccountId(), group_i);
-				}
+				double infoLoss_i = newCluster.lossDueToEnlargement(t_i._1, this.globLowerBound, this.globUpperBound);
+				sortedElements.add(new Tuple2<>(t_i, infoLoss_i));
 			}
-
-			//sort by loss
-			//this PriorityQueue is used for sorting and has the same "Typing" as the previous HashMap
-			PriorityQueue<Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double>> sortedGroups = new PriorityQueue<>(new GroupComparator());
-			for (Long i : groups.keySet()) {
-				//By just adding all the groups into the PQ one after another they get sorted
-				Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> group_i = groups.get(i);
-				sortedGroups.add(group_i);
-			}
-
-			//add k-1 tuples to new_cluster
-			//this is different to the specified CASTLE-algorithm, since there it is implicitly assumed we have k-1 groups at least
-			while(newCluster.tuples.size() < k){
-				//we need to check all elements of the sortedGroups PQ, for this we remove every group and store some of them in this "new" PQ
-				PriorityQueue<Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double>> newSortedGroups = new PriorityQueue<>(new GroupComparator());
-				//loop through all groups
-				while(!sortedGroups.isEmpty()){
-					Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> group_i = sortedGroups.poll();
-					//we always take one tuple from each group, in the order of ascending distance to t
-					//during this process some groups might become completely empty
-					if(!group_i._1.isEmpty()){
-						Tuple2<Transaction, Long> t_i = group_i._1.get(0); //get the element that expires the soonest from the group
-						group_i._1.remove(0); //also remove it, since we now add it to a new cluster
-						newSortedGroups.add(group_i);
-						newCluster.addTuple(t_i._1);
-						c.tuples.remove(t_i); //the current element has been assigned to a new cluster, so remove it from the old one
-						if(newCluster.tuples.size() == k){
-							//at the beginning of the loop we're only guaranteed to have at least k tuples in c, so we NEED to stop here
-							break;
-						}
-					}
-				}
-				sortedGroups = newSortedGroups;
+			//pick only the first k-1 elements in sortedElements (since c.size() was >= k we are guaranteed to find k-1 elements)
+			for(int counter = 0; counter < this.k - 1; counter++){
+				Tuple2<Transaction, Long> t_i = sortedElements.poll()._1;
+				newCluster.addTuple(t_i._1);
+				c.tuples.remove(t_i); //the current element has been assigned to a new cluster, so remove it from the old one
 			}
 
 			newClusters.add(newCluster);
@@ -240,9 +198,9 @@ public class Generalizer extends KeyedProcessFunction<Long, Transaction, Alert> 
 	}
 
 	//needed for sorting the groups that are created in "split"
-	static class GroupComparator implements Comparator<Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double>> {
+	static class GroupComparator implements Comparator<Tuple2<Tuple2<Transaction, Long>, Double>> {
 
-		public int compare(Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> o1, Tuple2<ArrayList<Tuple2<Transaction, Long>>, Double> o2) {
+		public int compare(Tuple2<Tuple2<Transaction, Long>, Double> o1, Tuple2<Tuple2<Transaction, Long>, Double> o2) {
 			return o1._2.doubleValue() > o2._2.doubleValue() ? 1 : -1;
 		}
 	}
