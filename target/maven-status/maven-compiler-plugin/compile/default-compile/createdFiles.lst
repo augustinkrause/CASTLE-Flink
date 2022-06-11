@@ -1,5 +1,6 @@
 spendreport/GeneralizedTransaction.class
 spendreport/Cluster$TransactionComparator.class
+spendreport/Generalizer$GroupComparator.class
 spendreport/TransactionGeneralizationJob.class
 spendreport/Generalizer.class
 spendreport/TransactionGeneralizationJob$1.class

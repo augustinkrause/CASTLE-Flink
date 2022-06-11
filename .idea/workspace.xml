@@ -5,8 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0e1bcc2d-cb3a-4b91-a155-690aa0ca1673" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/Generalizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/spendreport/Generalizer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Cluster$TransactionComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Cluster$TransactionComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Cluster.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Cluster.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Generalizer.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Generalizer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -48,8 +53,10 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="project.structure.last.edited" value="Project" />
     <property name="project.structure.proportion" value="0.15" />
