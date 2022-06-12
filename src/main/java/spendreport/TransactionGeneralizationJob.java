@@ -44,13 +44,10 @@ public class TransactionGeneralizationJob {
 			.addSource(new TransactionSource())
 			.name("transactions");
 
-		OutputTag<GeneralizedTransaction> outputTag = new OutputTag<GeneralizedTransaction>("generalized-elements"){};
 		DataStream<Alert> alerts = transactions
 			.keyBy(Transaction::getAccountId)
-			.process(new Generalizer(10,5000, 0.3, outputTag))
+			.process(new Generalizer<Transaction>(10,5000, 0.3, "getAmount"))
 			.name("Generalizer");
-
-		//DataStream<GeneralizedTransaction> sideOutputStream = alerts.iterate().getSideOutput(outputTag);
 
 		alerts
 			.addSink(new AlertSink())
