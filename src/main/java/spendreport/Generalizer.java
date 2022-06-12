@@ -18,6 +18,7 @@
 
 package spendreport;
 
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
@@ -30,9 +31,9 @@ import java.util.*;
 /**
  *
  */
-public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
+public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long, T, Alert> {
 
-	private ArrayList<Cluster<T>> clusters;
+	private ArrayList<Cluster<T, K>> clusters;
 	private double globLowerBound = Double.POSITIVE_INFINITY;
 	private double globUpperBound = Double.NEGATIVE_INFINITY;
 
@@ -40,14 +41,14 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 	private double threshold;
 	private int k;
 
-	private String methodName;
+	private KeySelector<T, K> key;
 
-	public Generalizer(int k, long delayConstraint, double threshold, String methodName){
+	public Generalizer(int k, long delayConstraint, double threshold, KeySelector<T, K> key){
 		this.clusters = new ArrayList<>();
 		this.delayConstraint = delayConstraint; //when a new element comes in, any tuple older than this constraint should be released
 		this.threshold = threshold;	//the aim is to not create clusters with more information loss than this
 		this.k = k;
-		this.methodName = methodName;
+		this.key = key;
 	}
 	// This hook is executed before the processing starts, kind of as a set-up
 	@Override
@@ -62,16 +63,13 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 			Context context,
 			Collector<Alert> collector) throws Exception {
 
-		System.out.println(element.getClass().getMethod("getAmount"));
-		System.out.println(element.getClass().getMethod("getAmount").invoke(element));
-
 		//update global bounds (upper and lower bound over the whole processing period)
-		if(this.globLowerBound > ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue()) this.globLowerBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
-		if(this.globUpperBound < ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue()) this.globUpperBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+		if(this.globLowerBound > (this.key.getKey(element)).doubleValue()) this.globLowerBound = (this.key.getKey(element)).doubleValue();
+		if(this.globUpperBound < (this.key.getKey(element)).doubleValue()) this.globUpperBound = (this.key.getKey(element)).doubleValue();
 
 		//Add tuple to best-fitting cluster or create new one
 		if(this.clusters.size() == 0){
-			Cluster c = new Cluster<T>(element, this.methodName);
+			Cluster c = new Cluster<T, K>(element, this.key);
 			this.clusters.add(c);
 		}else{
 			//find the cluster with lowest information loss due to enlargement with new tuple
@@ -89,13 +87,13 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 			if(this.clusters.get(minIndex).testEnlargement(element, threshold, globLowerBound, globUpperBound)){
 				this.clusters.get(minIndex).addTuple(element);
 			}else{
-				Cluster c = new Cluster<T>(element, this.methodName);
+				Cluster c = new Cluster<T, K>(element, this.key);
 				this.clusters.add(c);
 			}
 		}
 
 		//release tuples that are older than the delay constraint and their corresponding clusters
-		ArrayList<Cluster<T>> newClusters = new ArrayList<>();
+		ArrayList<Cluster<T, K>> newClusters = new ArrayList<>();
 		//since there are multiple cases where "release" removes clusters from the cluster list, we can't use an ordinary loop
 		while(!this.clusters.isEmpty()){
 			if(this.clusters.get(0).elements.peek()._2.longValue() + this.delayConstraint <= System.currentTimeMillis()){
@@ -110,7 +108,7 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 	}
 
 	//releases a cluster and if necessary k-anonymizes it first
-	private void release(Cluster<T> cluster, Context ctx){
+	private void release(Cluster<T, K> cluster, Context ctx){
 
 		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
 			//in this case the cluster is not yet "k-anonymous"
@@ -129,7 +127,7 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 		}
 
 		//splits become possible if the cluster is of size at least 2k
-		ArrayList<Cluster<T>> splitClusters;
+		ArrayList<Cluster<T, K>> splitClusters;
 		if(cluster.elements.size() >= 2 * this.k){
 			//split the cluster
 			splitClusters = this.split(cluster);
@@ -139,12 +137,13 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 			splitClusters.add(cluster);
 		}
 
+		//System.out.println(splitClusters);
 		//release all the created clusters
-		for(Cluster<T> c : splitClusters){
+		for(Cluster<T, K> c : splitClusters){
 			while(!c.elements.isEmpty()){
-				//GeneralizedTransaction newTransaction = new GeneralizedTransaction(c.elements.poll()._1, c.lowerBound, c.upperBound);
+				GeneralizedElement newElement = new GeneralizedElement(c.elements.poll()._1, c.lowerBound, c.upperBound);
 				//ctx.output(outputTag, newTransaction);
-				//System.out.println(newTransaction);
+				System.out.println(newElement);
 			}
 		}
 
@@ -155,12 +154,12 @@ public class Generalizer<T> extends KeyedProcessFunction<Long, T, Alert> {
 
 	//this performs the splitting specified in the CASTLE algorithm WITHOUT adhering to l-diversity principle
 	//it is a variant of a KNN algorithm
-	public ArrayList<Cluster<T>> split(Cluster<T> c){
-		ArrayList<Cluster<T>> newClusters = new ArrayList<>(); //will hold all the newly generated clusters
+	public ArrayList<Cluster<T, K>> split(Cluster<T, K> c){
+		ArrayList<Cluster<T, K>> newClusters = new ArrayList<>(); //will hold all the newly generated clusters
 
 		while(c.elements.size() >= this.k){
 			T t = c.elements.poll()._1; //TODO: In the original Algorithm they select a tuple randomly
-			Cluster<T> newCluster = new Cluster<T>(t, this.methodName); //form a new cluster over the randomly picked element
+			Cluster<T, K> newCluster = new Cluster<T, K>(t, this.key); //form a new cluster over the randomly picked element
 
 			//find k-1 NNs
 			PriorityQueue<Tuple2<Tuple2<T, Long>, Double>> sortedElements = new PriorityQueue<>(new ElementComparator()); //used for sorting by distance to t

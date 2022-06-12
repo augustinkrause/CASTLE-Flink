@@ -1,44 +1,40 @@
 package spendreport;
 
+import org.apache.flink.api.java.functions.KeySelector;
 import scala.Tuple2;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-public class Cluster<T> {
+public class Cluster<T, K extends Number> {
 
     double lowerBound;
     double upperBound;
 
-    private String methodName;
+    private KeySelector<T, K> key;
 
     //we use a priority queue to easily check wether the oldest tuple of this cluster needs to be released
     PriorityQueue<Tuple2<T, Long>> elements;
 
-    public Cluster(double lowerBound, double upperBound, String methodName){
+    public Cluster(double lowerBound, double upperBound, KeySelector<T, K> key){
+        this.key = key;
+
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
 
         this.elements = new PriorityQueue<>(new ElementComparator());
-
-        this.methodName = methodName;
     }
 
-    public Cluster(T element, String methodName){
+    public Cluster(T element, KeySelector<T, K> key){
         try {
-            this.lowerBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
-            this.upperBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+            this.key = key;
+
+            this.lowerBound = (this.key.getKey(element)).doubleValue();
+            this.upperBound = (this.key.getKey(element)).doubleValue();
 
             this.elements = new PriorityQueue<Tuple2<T, Long>>(new ElementComparator());
             this.elements.add(new Tuple2<>(element, System.currentTimeMillis()));
-
-            this.methodName = methodName;
-        }catch(NoSuchMethodException e){
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        }catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -46,19 +42,15 @@ public class Cluster<T> {
     public void addTuple(T element){
 
         try {
-            if (this.lowerBound > ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue()) {
-                this.lowerBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+            if (this.lowerBound > (this.key.getKey(element)).doubleValue()) {
+                this.lowerBound = (this.key.getKey(element)).doubleValue();
             }
-            if (this.upperBound < ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue()) {
-                this.upperBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+            if (this.upperBound < (this.key.getKey(element)).doubleValue()) {
+                this.upperBound = (this.key.getKey(element)).doubleValue();
             }
 
             this.elements.add(new Tuple2<>(element, System.currentTimeMillis()));
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
+        }catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -67,19 +59,15 @@ public class Cluster<T> {
     public double lossDueToEnlargement(T element, double globLowerBound, double globUpperBound){
         try {
             double newLowerBound = this.lowerBound;
-            if (newLowerBound > ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue())
-                newLowerBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+            if (newLowerBound > (this.key.getKey(element)).doubleValue())
+                newLowerBound = (this.key.getKey(element)).doubleValue();
 
             double newUpperBound = this.upperBound;
-            if (newUpperBound < ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue())
-                newUpperBound = ((Number) element.getClass().getMethod(this.methodName).invoke(element)).doubleValue();
+            if (newUpperBound < (this.key.getKey(element)).doubleValue())
+                newUpperBound = (this.key.getKey(element)).doubleValue();
 
             return (newUpperBound - newLowerBound) / (globUpperBound - globLowerBound);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
+        }catch (Exception e) {
             e.printStackTrace();
         }
         return 1;
@@ -89,7 +77,7 @@ public class Cluster<T> {
         return this.lossDueToEnlargement(element, globLowerBound, globUpperBound) <= threshold;
     }
 
-    public void merge(Cluster<T> c){
+    public void merge(Cluster<T, K> c){
         this.lowerBound = Double.min(this.lowerBound, c.lowerBound);
         this.upperBound = Double.max(this.upperBound, c.upperBound);
 
@@ -99,7 +87,7 @@ public class Cluster<T> {
 
     }
 
-    public double lossDueToMerge(Cluster<T> c, double globLowerBound, double globUpperBound){
+    public double lossDueToMerge(Cluster<T, K> c, double globLowerBound, double globUpperBound){
         double newLowerBound = Double.min(this.lowerBound, c.lowerBound);
         double newUpperBound = Double.max(this.upperBound, c.upperBound);
 

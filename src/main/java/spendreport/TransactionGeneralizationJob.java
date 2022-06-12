@@ -46,7 +46,7 @@ public class TransactionGeneralizationJob {
 
 		DataStream<Alert> alerts = transactions
 			.keyBy(Transaction::getAccountId)
-			.process(new Generalizer<Transaction>(10,5000, 0.3, "getAmount"))
+			.process(new Generalizer<Transaction, Double>(10,5000, 0.3, Transaction::getAmount))
 			.name("Generalizer");
 
 		alerts
