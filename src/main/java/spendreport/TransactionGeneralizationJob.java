@@ -44,14 +44,14 @@ public class TransactionGeneralizationJob {
 			.addSource(new TransactionSource())
 			.name("transactions");
 
-		DataStream<Alert> alerts = transactions
+		DataStream<GeneralizedElement<Transaction, Double>> generalizedTransactions = transactions
 			.keyBy(Transaction::getAccountId)
 			.process(new Generalizer<Transaction, Double>(10,5000, 0.3, Transaction::getAmount))
 			.name("Generalizer");
 
-		alerts
+		/*alerts
 			.addSink(new AlertSink())
-			.name("send-alerts");
+			.name("send-alerts");*/
 
 
 		env.execute("Transactions Generalization");

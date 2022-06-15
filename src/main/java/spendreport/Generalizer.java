@@ -22,8 +22,6 @@ import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
-import org.apache.flink.walkthrough.common.entity.Alert;
-import org.apache.flink.walkthrough.common.entity.Transaction;
 import scala.Tuple2;
 
 import java.util.*;
@@ -31,7 +29,7 @@ import java.util.*;
 /**
  *
  */
-public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long, T, Alert> {
+public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long, T, GeneralizedElement<T, K>> {
 
 	private ArrayList<Cluster<T, K>> clusters;
 	private double globLowerBound = Double.POSITIVE_INFINITY;
@@ -61,7 +59,7 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 	public void processElement(
 			T element,
 			Context context,
-			Collector<Alert> collector) throws Exception {
+			Collector<GeneralizedElement<T, K>> collector) throws Exception {
 
 		//update global bounds (upper and lower bound over the whole processing period)
 		if(this.globLowerBound > (this.key.getKey(element)).doubleValue()) this.globLowerBound = (this.key.getKey(element)).doubleValue();
@@ -97,7 +95,7 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 		//since there are multiple cases where "release" removes clusters from the cluster list, we can't use an ordinary loop
 		while(!this.clusters.isEmpty()){
 			if(this.clusters.get(0).elements.peek()._2.longValue() + this.delayConstraint <= System.currentTimeMillis()){
-				this.release(this.clusters.get(0), context);
+				this.release(this.clusters.get(0), collector);
 			}else{
 				newClusters.add(this.clusters.get(0));
 				this.clusters.remove(0);
@@ -108,7 +106,7 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 	}
 
 	//releases a cluster and if necessary k-anonymizes it first
-	private void release(Cluster<T, K> cluster, Context ctx){
+	private void release(Cluster<T, K> cluster, Collector<GeneralizedElement<T, K>> collector){
 
 		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
 			//in this case the cluster is not yet "k-anonymous"
@@ -137,13 +135,14 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 			splitClusters.add(cluster);
 		}
 
-		//System.out.println(splitClusters);
 		//release all the created clusters
 		for(Cluster<T, K> c : splitClusters){
 			while(!c.elements.isEmpty()){
 				GeneralizedElement newElement = new GeneralizedElement(c.elements.poll()._1, c.lowerBound, c.upperBound);
-				//ctx.output(outputTag, newTransaction);
-				System.out.println(newElement);
+
+				//output the generalized element
+				//System.out.println(newElement);
+				collector.collect(newElement);
 			}
 		}
 
