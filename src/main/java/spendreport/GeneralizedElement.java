@@ -1,27 +1,23 @@
 package spendreport;
 
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.walkthrough.common.entity.Transaction;
+import org.apache.flink.util.StringUtils;
 
-public class GeneralizedElement<T, K extends Number>{
+public class GeneralizedElement<T>{
 
     private T element;
-    private Tuple2<K, K> generalizedValue;
+    private Tuple2<Double, Double>[] generalizedValues;
 
-    public GeneralizedElement(T element, K lowerBound, K upperBound){
+    public GeneralizedElement(T element, double[] lowerBounds, double[] upperBounds){
         this.element = element;
-        this.generalizedValue = new Tuple2<>(lowerBound, upperBound);
+        this.generalizedValues = new Tuple2[lowerBounds.length];
+        for(int i = 0; i < lowerBounds.length; i++){
+            this.generalizedValues[i] = new Tuple2<>(lowerBounds[i], upperBounds[i]);
+        }
     }
 
-    public T getElement() {
-        return this.element;
-    }
-
-    public Tuple2<K, K> getGeneralizedValue() {
-        return this.generalizedValue;
-    }
 
     public String toString() {
-        return "Transaction{element=" + this.element + ", generalizedValue=" + this.generalizedValue + '}';
+        return "Transaction{element=" + this.element + ", generalizedValues=" + StringUtils.arrayAwareToString(this.generalizedValues) + '}';
     }
 }

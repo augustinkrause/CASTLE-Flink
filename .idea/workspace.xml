@@ -5,15 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0e1bcc2d-cb3a-4b91-a155-690aa0ca1673" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/checkstyle-idea.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/Cluster.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/spendreport/Cluster.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/GeneralizedElement.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/spendreport/GeneralizedElement.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/Generalizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/spendreport/Generalizer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/TransactionGeneralizationJob.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/spendreport/TransactionGeneralizationJob.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Cluster$ElementComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Cluster$ElementComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Cluster.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Cluster.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/spendreport/GeneralizedElement.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/GeneralizedElement.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Generalizer$ElementComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Generalizer$ElementComparator.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/spendreport/Generalizer.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/Generalizer.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/spendreport/TransactionGeneralizationJob.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/spendreport/TransactionGeneralizationJob.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -60,13 +64,13 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="project.structure.last.edited" value="Project" />
+    <property name="project.structure.last.edited" value="Modules" />
     <property name="project.structure.proportion" value="0.15" />
-    <property name="project.structure.side.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.2" />
     <property name="settings.editor.selected.configurable" value="configurable.group.language" />
   </component>
   <component name="RunManager">
-    <configuration name="TransactionGeneralizationJob" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+    <configuration name="TransactionGeneralizationJob" type="Application" factoryName="Application" nameIsGenerated="true">
       <option name="ALTERNATIVE_JRE_PATH" value="1.8" />
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
       <option name="MAIN_CLASS_NAME" value="spendreport.TransactionGeneralizationJob" />
@@ -81,11 +85,6 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Application.TransactionGeneralizationJob" />
-      </list>
-    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -108,6 +107,7 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

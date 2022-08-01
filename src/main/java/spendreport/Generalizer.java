@@ -18,35 +18,44 @@
 
 package spendreport;
 
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
+import org.apache.flink.streaming.api.functions.ProcessFunction;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.Collector;
-import scala.Tuple2;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  *
  */
-public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long, T, GeneralizedElement<T, K>> {
+public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> implements Serializable {
 
-	private ArrayList<Cluster<T, K>> clusters;
-	private double globLowerBound = Double.POSITIVE_INFINITY;
-	private double globUpperBound = Double.NEGATIVE_INFINITY;
+	private ArrayList<Cluster> clusters;
+	private double[] globLowerBounds;
+	private double[] globUpperBounds;
 
 	private long delayConstraint;
 	private double threshold;
 	private int k;
 
-	private KeySelector<T, K> key;
+	private int[] keys;
 
-	public Generalizer(int k, long delayConstraint, double threshold, KeySelector<T, K> key){
+	public Generalizer(int k, long delayConstraint, double threshold, int[] keys){
 		this.clusters = new ArrayList<>();
 		this.delayConstraint = delayConstraint; //when a new element comes in, any tuple older than this constraint should be released
 		this.threshold = threshold;	//the aim is to not create clusters with more information loss than this
 		this.k = k;
-		this.key = key;
+		this.keys = keys;
+
+		//initialize one global bound per key
+		this.globLowerBounds = new double[keys.length];
+		this.globUpperBounds = new double[keys.length];
+		for(int i = 0; i < keys.length; i++){
+			this.globLowerBounds[i] = Double.POSITIVE_INFINITY;
+			this.globUpperBounds[i] = Double.NEGATIVE_INFINITY;
+		}
 	}
 	// This hook is executed before the processing starts, kind of as a set-up
 	@Override
@@ -57,45 +66,50 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 	// This hook is executed on each element of the data stream
 	@Override
 	public void processElement(
-			T element,
+			Tuple2<Tuple, Long> element,
 			Context context,
-			Collector<GeneralizedElement<T, K>> collector) throws Exception {
-
-		//update global bounds (upper and lower bound over the whole processing period)
-		if(this.globLowerBound > (this.key.getKey(element)).doubleValue()) this.globLowerBound = (this.key.getKey(element)).doubleValue();
-		if(this.globUpperBound < (this.key.getKey(element)).doubleValue()) this.globUpperBound = (this.key.getKey(element)).doubleValue();
+			Collector<Tuple> collector) throws Exception {
+		
+		//update ALL global bounds
+		for(int i = 0; i < this.keys.length; i++){
+			//update global bounds (upper and lower bound over the whole processing period)
+			if(this.globLowerBounds[i] > ((Number) element.f0.getField(this.keys[i])).doubleValue()) this.globLowerBounds[i] = ((Number) element.f0.getField(this.keys[i])).doubleValue();
+			if(this.globUpperBounds[i] < ((Number) element.f0.getField(this.keys[i])).doubleValue()) this.globUpperBounds[i] = ((Number) element.f0.getField(this.keys[i])).doubleValue();
+		}
 
 		//Add tuple to best-fitting cluster or create new one
 		if(this.clusters.size() == 0){
-			Cluster c = new Cluster<T, K>(element, this.key);
+			Cluster c = new Cluster(element, this.keys);
 			this.clusters.add(c);
 		}else{
 			//find the cluster with lowest information loss due to enlargement with new tuple
 			double minimum = Double.POSITIVE_INFINITY;
 			int minIndex = 0;
 			for(int i = 0; i < this.clusters.size(); i++){
-				if(this.clusters.get(i).lossDueToEnlargement(element, globLowerBound, globUpperBound) < minimum){
-					minimum = this.clusters.get(i).lossDueToEnlargement(element, globLowerBound, globUpperBound);
+				double lossDueToEnlargement = this.clusters.get(i).lossDueToEnlargement(element.f0, this.globLowerBounds, this.globUpperBounds);
+				if(lossDueToEnlargement < minimum){
+					minimum = lossDueToEnlargement;
 					minIndex = i;
 				}
 			}
 
 			//only add the new element to the found cluster if it satisfies our information loss constraint
 			//otherwise create a new cluster around it
-			if(this.clusters.get(minIndex).testEnlargement(element, threshold, globLowerBound, globUpperBound)){
-				this.clusters.get(minIndex).addTuple(element);
+			if(this.clusters.get(minIndex).testEnlargement(element.f0, this.threshold, this.globLowerBounds, this.globUpperBounds)){
+				this.clusters.get(minIndex).addTuple(element, this.globLowerBounds, this.globUpperBounds);
 			}else{
-				Cluster c = new Cluster<T, K>(element, this.key);
+				Cluster c = new Cluster(element, this.keys);
 				this.clusters.add(c);
 			}
 		}
 
 		//release tuples that are older than the delay constraint and their corresponding clusters
-		ArrayList<Cluster<T, K>> newClusters = new ArrayList<>();
+		ArrayList<Cluster> newClusters = new ArrayList<>();
 		//since there are multiple cases where "release" removes clusters from the cluster list, we can't use an ordinary loop
 		while(!this.clusters.isEmpty()){
-			if(this.clusters.get(0).elements.peek()._2.longValue() + this.delayConstraint <= System.currentTimeMillis()){
-				this.release(this.clusters.get(0), collector);
+
+			if(this.clusters.get(0).elements.peek().f1 + this.delayConstraint <= System.currentTimeMillis()){
+				newClusters = this.release(this.clusters.get(0), newClusters, collector);
 			}else{
 				newClusters.add(this.clusters.get(0));
 				this.clusters.remove(0);
@@ -106,26 +120,40 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 	}
 
 	//releases a cluster and if necessary k-anonymizes it first
-	private void release(Cluster<T, K> cluster, Collector<GeneralizedElement<T, K>> collector){
+	private ArrayList<Cluster> release(Cluster cluster, ArrayList<Cluster> newClusters, Collector<Tuple> collector){
 
 		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
 			//in this case the cluster is not yet "k-anonymous"
 			//merge with cluster that requires minimal enlargement
 			double minimum = Double.POSITIVE_INFINITY;
 			int minIndex = 0;
+			boolean minNewCluster = false; //indicates if the minIndex is relative to this.clusters or newClusters
 			for(int i = 1; i < this.clusters.size(); i++){
-				if(cluster.lossDueToMerge(this.clusters.get(i), globLowerBound, globUpperBound) < minimum){
-					minimum = cluster.lossDueToMerge(this.clusters.get(i), globLowerBound, globUpperBound);
+				if(cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
+					minimum = cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds);
 					minIndex = i;
 				}
 			}
-			cluster.merge(this.clusters.get(minIndex));
-			this.clusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+			//we need to loop through previously processed clusters as well
+			for(int i = 0; i < newClusters.size(); i++){
+				if(cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
+					minimum = cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds);
+					minIndex = i;
+					minNewCluster = true;
+				}
+			}
+			if(minNewCluster){
+				cluster.merge(newClusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
+				newClusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+			}else{
+				cluster.merge(this.clusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
+				this.clusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+			}
 
 		}
 
 		//splits become possible if the cluster is of size at least 2k
-		ArrayList<Cluster<T, K>> splitClusters;
+		ArrayList<Cluster> splitClusters;
 		if(cluster.elements.size() >= 2 * this.k){
 			//split the cluster
 			splitClusters = this.split(cluster);
@@ -136,43 +164,45 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 		}
 
 		//release all the created clusters
-		for(Cluster<T, K> c : splitClusters){
+		for(Cluster c : splitClusters){
+			//System.out.println(c);
 			while(!c.elements.isEmpty()){
-				GeneralizedElement newElement = new GeneralizedElement(c.elements.poll()._1, c.lowerBound, c.upperBound);
+				Tuple generalizedElement = c.generalize(c.elements.poll().f0);
 
 				//output the generalized element
-				//System.out.println(newElement);
-				collector.collect(newElement);
+				System.out.println(generalizedElement);
+				collector.collect(generalizedElement);
 			}
 		}
 
 		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
 		//TODO: Cluster reuse
 		this.clusters.remove(0);
+		return newClusters;
 	}
 
 	//this performs the splitting specified in the CASTLE algorithm WITHOUT adhering to l-diversity principle
 	//it is a variant of a KNN algorithm
-	public ArrayList<Cluster<T, K>> split(Cluster<T, K> c){
-		ArrayList<Cluster<T, K>> newClusters = new ArrayList<>(); //will hold all the newly generated clusters
+	public ArrayList<Cluster> split(Cluster c){
+		ArrayList<Cluster> newClusters = new ArrayList<>(); //will hold all the newly generated clusters
 
 		while(c.elements.size() >= this.k){
-			T t = c.elements.poll()._1; //TODO: In the original Algorithm they select a tuple randomly
-			Cluster<T, K> newCluster = new Cluster<T, K>(t, this.key); //form a new cluster over the randomly picked element
+			Tuple2<Tuple, Long> t = c.elements.poll(); //TODO: In the original Algorithm they select a tuple randomly
+			Cluster newCluster = new Cluster(t, this.keys); //form a new cluster over the randomly picked element
 
 			//find k-1 NNs
-			PriorityQueue<Tuple2<Tuple2<T, Long>, Double>> sortedElements = new PriorityQueue<>(new ElementComparator()); //used for sorting by distance to t
-			Iterator<Tuple2<T, Long>> it = c.elements.iterator();
+			PriorityQueue<Tuple2<Tuple2<Tuple, Long>, Double>> sortedElements = new PriorityQueue<>(new ElementComparator()); //used for sorting by distance to t
+			Iterator<Tuple2<Tuple, Long>> it = c.elements.iterator();
 			//calculate each element's distance to t
 			while(it.hasNext()){
-				Tuple2<T, Long> t_i = it.next(); //the transaction along with its timestamp (which is needed later)
-				double infoLoss_i = newCluster.lossDueToEnlargement(t_i._1, this.globLowerBound, this.globUpperBound);
+				Tuple2<Tuple, Long> t_i = it.next(); //the transaction along with its timestamp (which is needed later)
+				double infoLoss_i = newCluster.lossDueToEnlargement(t_i.f0, this.globLowerBounds, this.globUpperBounds);
 				sortedElements.add(new Tuple2<>(t_i, infoLoss_i));
 			}
 			//pick only the first k-1 elements in sortedElements (since c.size() was >= k we are guaranteed to find k-1 elements)
 			for(int counter = 0; counter < this.k - 1; counter++){
-				Tuple2<T, Long> t_i = sortedElements.poll()._1;
-				newCluster.addTuple(t_i._1);
+				Tuple2<Tuple, Long> t_i = sortedElements.poll().f0;
+				newCluster.addTuple(t_i, this.globLowerBounds, this.globUpperBounds);
 				c.elements.remove(t_i); //the current element has been assigned to a new cluster, so remove it from the old one
 			}
 
@@ -183,11 +213,11 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 		while(!c.elements.isEmpty()){
 			Cluster minC = newClusters.get(0);
 			for(Cluster c_i : newClusters){
-				if(c_i.lossDueToEnlargement(c.elements.peek()._1, this.globLowerBound, this.globUpperBound) < minC.lossDueToEnlargement(c.elements.peek()._1, this.globLowerBound, this.globUpperBound)){
+				if(c_i.lossDueToEnlargement(c.elements.peek().f0, this.globLowerBounds, this.globUpperBounds) < minC.lossDueToEnlargement(c.elements.peek().f0, this.globLowerBounds, this.globUpperBounds)){
 					minC = c_i;
 				}
 			}
-			minC.addTuple(c.elements.poll()._1);
+			minC.addTuple(c.elements.poll(), this.globLowerBounds, this.globUpperBounds);
 		}
 
 		return newClusters;
@@ -197,7 +227,7 @@ public class Generalizer<T, K extends Number> extends KeyedProcessFunction<Long,
 	static class ElementComparator implements Comparator<Tuple2<?, Double>> {
 
 		public int compare(Tuple2<?, Double> o1, Tuple2<?, Double> o2) {
-			return o1._2.doubleValue() > o2._2.doubleValue() ? 1 : -1;
+			return o1.f1.doubleValue() > o2.f1.doubleValue() ? 1 : -1;
 		}
 	}
 

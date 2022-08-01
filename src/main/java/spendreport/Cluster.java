@@ -1,108 +1,152 @@
 package spendreport;
 
 import org.apache.flink.api.java.functions.KeySelector;
-import scala.Tuple2;
+import org.apache.flink.util.StringUtils;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple2;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-public class Cluster<T, K extends Number> {
+public class Cluster {
 
-    double lowerBound;
-    double upperBound;
+    double[] lowerBounds;
+    double[] upperBounds;
 
-    private KeySelector<T, K> key;
+    private int[] keys;
+    double oldInfoLoss = 0;
 
-    //we use a priority queue to easily check wether the oldest tuple of this cluster needs to be released
-    PriorityQueue<Tuple2<T, Long>> elements;
+    //we use a priority queue to easily check whether the oldest tuple of this cluster needs to be released
+    PriorityQueue<Tuple2<Tuple, Long>> elements;
 
-    public Cluster(double lowerBound, double upperBound, KeySelector<T, K> key){
-        this.key = key;
+    public Cluster(double[] lowerBounds, double[] upperBounds, int[] keys){
+        this.keys = keys;
 
-        this.lowerBound = lowerBound;
-        this.upperBound = upperBound;
+        this.lowerBounds = lowerBounds;
+        this.upperBounds = upperBounds;
 
         this.elements = new PriorityQueue<>(new ElementComparator());
     }
 
-    public Cluster(T element, KeySelector<T, K> key){
+    public Cluster(Tuple2<Tuple, Long> element, int[] keys){
         try {
-            this.key = key;
+            this.keys = keys;
 
-            this.lowerBound = (this.key.getKey(element)).doubleValue();
-            this.upperBound = (this.key.getKey(element)).doubleValue();
-
-            this.elements = new PriorityQueue<Tuple2<T, Long>>(new ElementComparator());
-            this.elements.add(new Tuple2<>(element, System.currentTimeMillis()));
-        }catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void addTuple(T element){
-
-        try {
-            if (this.lowerBound > (this.key.getKey(element)).doubleValue()) {
-                this.lowerBound = (this.key.getKey(element)).doubleValue();
-            }
-            if (this.upperBound < (this.key.getKey(element)).doubleValue()) {
-                this.upperBound = (this.key.getKey(element)).doubleValue();
+            this.lowerBounds = new double[this.keys.length];
+            this.upperBounds = new double[this.keys.length];
+            for(int i = 0; i < this.keys.length; i++){
+                this.lowerBounds[i] = ((Number)element.f0.getField(this.keys[i])).doubleValue();
+                this.upperBounds[i] = ((Number)element.f0.getField(this.keys[i])).doubleValue();
             }
 
-            this.elements.add(new Tuple2<>(element, System.currentTimeMillis()));
+            this.elements = new PriorityQueue<>(new ElementComparator());
+            this.elements.add(element);
         }catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
-    public double lossDueToEnlargement(T element, double globLowerBound, double globUpperBound){
-        try {
-            double newLowerBound = this.lowerBound;
-            if (newLowerBound > (this.key.getKey(element)).doubleValue())
-                newLowerBound = (this.key.getKey(element)).doubleValue();
+    public void addTuple(Tuple2<Tuple, Long> element, double[] globLowerBounds, double[] globUpperBounds){
 
-            double newUpperBound = this.upperBound;
-            if (newUpperBound < (this.key.getKey(element)).doubleValue())
-                newUpperBound = (this.key.getKey(element)).doubleValue();
+        double newInfoLoss = 0;
+        for(int i = 0; i < this.keys.length; i++){
+            try {
+                if (this.lowerBounds[i] > ((Number) element.f0.getField(this.keys[i])).doubleValue()) {
+                    this.lowerBounds[i] = ((Number) element.f0.getField(this.keys[i])).doubleValue();
+                }
+                if (this.upperBounds[i] < ((Number) element.f0.getField(this.keys[i])).doubleValue()) {
+                    this.upperBounds[i] = ((Number) element.f0.getField(this.keys[i])).doubleValue();
+                }
 
-            return (newUpperBound - newLowerBound) / (globUpperBound - globLowerBound);
-        }catch (Exception e) {
-            e.printStackTrace();
+                this.elements.add(element);
+                newInfoLoss += (this.upperBounds[i] - this.lowerBounds[i]) / (globUpperBounds[i] - globLowerBounds[i]);
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
         }
-        return 1;
+
+        this.oldInfoLoss = newInfoLoss;
     }
 
-    public Boolean testEnlargement(T element, double threshold, double globLowerBound, double globUpperBound){
-        return this.lossDueToEnlargement(element, globLowerBound, globUpperBound) <= threshold;
+    public double lossDueToEnlargement(Tuple element, double[] globLowerBounds, double[] globUpperBounds){
+        double newInfoLoss = 0;
+        for(int i = 0; i < this.keys.length; i++){
+            try {
+                double newLowerBound = this.lowerBounds[i];
+                if (newLowerBound > ((Number) element.getField(this.keys[i])).doubleValue())
+                    newLowerBound = ((Number) element.getField(this.keys[i])).doubleValue();
+
+                double newUpperBound = this.upperBounds[i];
+                if (newUpperBound < ((Number) element.getField(this.keys[i])).doubleValue())
+                    newUpperBound = ((Number) element.getField(this.keys[i])).doubleValue();
+
+                newInfoLoss += (newUpperBound - newLowerBound) / (globUpperBounds[i] - globLowerBounds[i]);
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return newInfoLoss - this.oldInfoLoss;
     }
 
-    public void merge(Cluster<T, K> c){
-        this.lowerBound = Double.min(this.lowerBound, c.lowerBound);
-        this.upperBound = Double.max(this.upperBound, c.upperBound);
+    public Boolean testEnlargement(Tuple element, double threshold, double[] globLowerBounds, double[] globUpperBounds){
+        return this.lossDueToEnlargement(element, globLowerBounds, globUpperBounds) <= threshold;
+    }
+
+    public void merge(Cluster c, double[] globLowerBounds, double[] globUpperBounds){
+        //TODO: Here we're assuming the clusters have an equal number of keys and the keys are ordered equally...
+        double newInfoLoss = 0;
+        for(int i = 0; i < this.keys.length; i++){
+            this.lowerBounds[i] = Double.min(this.lowerBounds[i], c.lowerBounds[i]);
+            this.upperBounds[i] = Double.max(this.upperBounds[i], c.upperBounds[i]);
+
+            newInfoLoss += (this.upperBounds[i] - this.lowerBounds[i])/(globUpperBounds[i] - globLowerBounds[i]);
+        }
 
         while(!c.elements.isEmpty()){
             this.elements.add(c.elements.poll());
         }
 
+        this.oldInfoLoss = newInfoLoss;
     }
 
-    public double lossDueToMerge(Cluster<T, K> c, double globLowerBound, double globUpperBound){
-        double newLowerBound = Double.min(this.lowerBound, c.lowerBound);
-        double newUpperBound = Double.max(this.upperBound, c.upperBound);
+    public double lossDueToMerge(Cluster c, double[] globLowerBounds, double[] globUpperBounds){
+        double newInfoLoss = 0;
+        for(int i = 0; i < this.keys.length; i++){
+            double newLowerBound = Double.min(this.lowerBounds[i], c.lowerBounds[i]);
+            double newUpperBound = Double.max(this.upperBounds[i], c.upperBounds[i]);
 
-        return (newUpperBound - newLowerBound)/(globUpperBound - globLowerBound);
+            newInfoLoss += (newUpperBound - newLowerBound)/(globUpperBounds[i] - globLowerBounds[i]);
+        }
+
+        return newInfoLoss - this.oldInfoLoss;
+    }
+
+    public Tuple generalize(Tuple t){
+        Tuple newT = Tuple.newInstance(t.getArity());
+
+        for(int i = 0; i < this.keys.length; i++){
+            newT.setField(new Tuple2<>(this.lowerBounds[i], this.upperBounds[i]), this.keys[i]);
+        }
+
+        for(int i = 0; i < t.getArity(); i++){
+            if(newT.getField(i) == null) newT.setField(t.getField(i) ,i);
+        }
+
+        return newT;
     }
 
     public String toString(){
-        return "Lower Bound: " + this.lowerBound + ", Upper Bound: " + this.upperBound + ", Size: " + this.elements.size();
+        return "Lower Bound: " + StringUtils.arrayAwareToString(this.lowerBounds) + ", Upper Bound: " + StringUtils.arrayAwareToString(this.upperBounds) + ", Size: " + this.elements.size();
     }
 
     static class ElementComparator implements Comparator<Tuple2<?, Long>> {
 
         @Override
         public int compare(Tuple2<?, Long> o1, Tuple2<?, Long> o2) {
-            return o1._2.longValue() > o2._2.longValue() ? 1 : -1;
+            return o1.f1.longValue() > o2.f1.longValue() ? 1 : -1;
         }
     }
 }
