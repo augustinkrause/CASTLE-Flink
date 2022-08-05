@@ -33,6 +33,7 @@ import java.util.*;
 public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> implements Serializable {
 
 	private ArrayList<Cluster> clusters;
+	private ArrayList<Cluster> reuseClusters; //these clusters will have been previously published and thus at some point have been k-anonymous
 	private double[] globLowerBounds;
 	private double[] globUpperBounds;
 
@@ -44,6 +45,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 	public Generalizer(int k, long delayConstraint, double threshold, int[] keys){
 		this.clusters = new ArrayList<>();
+		this.reuseClusters = new ArrayList<>();
 		this.delayConstraint = delayConstraint; //when a new element comes in, any tuple older than this constraint should be released
 		this.threshold = threshold;	//the aim is to not create clusters with more information loss than this
 		this.k = k;
@@ -122,6 +124,30 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 	//releases a cluster and if necessary k-anonymizes it first
 	private ArrayList<Cluster> release(Cluster cluster, ArrayList<Cluster> newClusters, Collector<Tuple> collector){
 
+		//check if reuse FOR THE OLDEST TUPLE IN THE CLUSTER is possible (only if the to-be-released cluster is not itself k-anonymous)
+		//in this case we know the oldest tuple in the cluster has expired and should be released
+		if(cluster.elements.size() < this.k){
+			//find fitting reuseClusters
+			ArrayList<Cluster> fittingReuseClusters = new ArrayList<>();
+
+			for(int i = 0; i < this.reuseClusters.size(); i++){
+				if(this.reuseClusters.get(i).fits(cluster.elements.peek().f0)) fittingReuseClusters.add(this.reuseClusters.get(i));
+			}
+			if(fittingReuseClusters.size() > 0){
+				//randomly select reuseCluster
+				int index = new Random().nextInt(fittingReuseClusters.size());
+				Tuple generalizedElement = fittingReuseClusters.get(index).generalize(cluster.elements.poll().f0);
+				collector.collect(generalizedElement);
+
+				if(cluster.elements.size() == 0) this.clusters.remove(0);
+
+				System.out.print("Reused: ");
+				System.out.println(fittingReuseClusters.get(index));
+				//we now return just the old list of already processed clusters and don't remove any cluster, since no whole cluster has been released
+				return newClusters;
+			}
+		}
+
 		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
 			//in this case the cluster is not yet "k-anonymous"
 			//merge with cluster that requires minimal enlargement
@@ -165,7 +191,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 		//release all the created clusters
 		for(Cluster c : splitClusters){
-			//System.out.println(c);
+
 			while(!c.elements.isEmpty()){
 				Tuple generalizedElement = c.generalize(c.elements.poll().f0);
 
@@ -173,10 +199,10 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				System.out.println(generalizedElement);
 				collector.collect(generalizedElement);
 			}
+			this.reuseClusters.add(c); // buffer EMPTY cluster for reuse
 		}
 
 		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
-		//TODO: Cluster reuse
 		this.clusters.remove(0);
 		return newClusters;
 	}
@@ -187,7 +213,10 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		ArrayList<Cluster> newClusters = new ArrayList<>(); //will hold all the newly generated clusters
 
 		while(c.elements.size() >= this.k){
-			Tuple2<Tuple, Long> t = c.elements.poll(); //TODO: In the original Algorithm they select a tuple randomly
+			int index = new Random().nextInt(c.elements.size());
+			Tuple2<Tuple, Long>[] elementsArray = new Tuple2[c.elements.size()];
+			c.elements.toArray(elementsArray);
+			Tuple2<Tuple, Long> t = elementsArray[index];
 			Cluster newCluster = new Cluster(t, this.keys); //form a new cluster over the randomly picked element
 
 			//find k-1 NNs

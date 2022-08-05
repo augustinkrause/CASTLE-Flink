@@ -1,12 +1,9 @@
 package spendreport;
 
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.util.StringUtils;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -96,8 +93,8 @@ public class Cluster {
     }
 
     public void merge(Cluster c, double[] globLowerBounds, double[] globUpperBounds){
-        //TODO: Here we're assuming the clusters have an equal number of keys and the keys are ordered equally...
         double newInfoLoss = 0;
+
         for(int i = 0; i < this.keys.length; i++){
             this.lowerBounds[i] = Double.min(this.lowerBounds[i], c.lowerBounds[i]);
             this.upperBounds[i] = Double.max(this.upperBounds[i], c.upperBounds[i]);
@@ -136,6 +133,16 @@ public class Cluster {
         }
 
         return newT;
+    }
+
+    //checks whether t lies within the bounds of each dimension
+    public boolean fits(Tuple t){
+
+        boolean check = true;
+        for(int i = 0; i < this.keys.length; i++){
+            check = check && (((Number) t.getField(this.keys[i])).doubleValue() >= this.lowerBounds[i] && ((Number) t.getField(this.keys[i])).doubleValue() <= this.upperBounds[i]);
+        }
+        return check;
     }
 
     public String toString(){

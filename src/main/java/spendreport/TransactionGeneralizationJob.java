@@ -46,11 +46,10 @@ public class TransactionGeneralizationJob {
 				.returns(Types.TUPLE(Types.TUPLE(Types.DOUBLE, Types.LONG, Types.LONG), Types.LONG)) //needed, bc in the lambda function type info gts lost
 				.name("Mapping");
 
-		int[] keys = new int[2];
+		int[] keys = new int[1];
 		keys[0] = 0;
-		keys[1] = 1;
 		DataStream<Tuple> generalizedTransactions = mappedTransactions
-			.process(new Generalizer(10,5000, 0.3, keys))
+			.process(new Generalizer(10,2500, 0.3, keys))
 				.returns(Types.TUPLE())
 			.name("Generalizer");
 
