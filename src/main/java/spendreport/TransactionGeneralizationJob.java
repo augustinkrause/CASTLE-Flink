@@ -49,7 +49,7 @@ public class TransactionGeneralizationJob {
 		int[] keys = new int[1];
 		keys[0] = 0;
 		DataStream<Tuple> generalizedTransactions = mappedTransactions
-			.process(new Generalizer(10,2500, 0.3, keys))
+			.process(new Generalizer(10,2500, 10, 15, keys))
 				.returns(Types.TUPLE())
 			.name("Generalizer");
 

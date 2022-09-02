@@ -15,6 +15,8 @@ public class Cluster {
     private int[] keys;
     double oldInfoLoss = 0;
 
+    public long timestamp;
+
     //we use a priority queue to easily check whether the oldest tuple of this cluster needs to be released
     PriorityQueue<Tuple2<Tuple, Long>> elements;
 
@@ -25,6 +27,8 @@ public class Cluster {
         this.upperBounds = upperBounds;
 
         this.elements = new PriorityQueue<>(new ElementComparator());
+
+        this.timestamp = System.currentTimeMillis();
     }
 
     public Cluster(Tuple2<Tuple, Long> element, int[] keys){
@@ -40,6 +44,8 @@ public class Cluster {
 
             this.elements = new PriorityQueue<>(new ElementComparator());
             this.elements.add(element);
+
+            this.timestamp = System.currentTimeMillis();
         }catch (Exception e) {
             e.printStackTrace();
         }

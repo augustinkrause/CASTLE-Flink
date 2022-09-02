@@ -33,23 +33,27 @@ import java.util.*;
 public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> implements Serializable {
 
 	private ArrayList<Cluster> clusters;
-	private ArrayList<Cluster> reuseClusters; //these clusters will have been previously published and thus at some point have been k-anonymous
+	private PriorityQueue<Cluster> reuseClusters; //these clusters will have been previously published and thus at some point have been k-anonymous
 	private double[] globLowerBounds;
 	private double[] globUpperBounds;
 
 	private long delayConstraint;
 	private double threshold;
 	private int k;
+	private int mu;
+	private int maxClusters;
 
 	private int[] keys;
 
-	public Generalizer(int k, long delayConstraint, double threshold, int[] keys){
+	public Generalizer(int k, long delayConstraint, int mu, int maxClusters, int[] keys){
 		this.clusters = new ArrayList<>();
-		this.reuseClusters = new ArrayList<>();
+		this.reuseClusters = new PriorityQueue<>(new ClusterComparator());
 		this.delayConstraint = delayConstraint; //when a new element comes in, any tuple older than this constraint should be released
-		this.threshold = threshold;	//the aim is to not create clusters with more information loss than this
+		this.threshold = 0;	//the aim is to not create clusters with more information loss than this
 		this.k = k;
 		this.keys = keys;
+		this.mu = mu;
+		this.maxClusters = maxClusters;
 
 		//initialize one global bound per key
 		this.globLowerBounds = new double[keys.length];
@@ -97,7 +101,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 			//only add the new element to the found cluster if it satisfies our information loss constraint
 			//otherwise create a new cluster around it
-			if(this.clusters.get(minIndex).testEnlargement(element.f0, this.threshold, this.globLowerBounds, this.globUpperBounds)){
+			if(this.clusters.get(minIndex).testEnlargement(element.f0, this.threshold, this.globLowerBounds, this.globUpperBounds) || this.clusters.size() >= this.maxClusters){
 				this.clusters.get(minIndex).addTuple(element, this.globLowerBounds, this.globUpperBounds);
 			}else{
 				Cluster c = new Cluster(element, this.keys);
@@ -130,8 +134,9 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			//find fitting reuseClusters
 			ArrayList<Cluster> fittingReuseClusters = new ArrayList<>();
 
-			for(int i = 0; i < this.reuseClusters.size(); i++){
-				if(this.reuseClusters.get(i).fits(cluster.elements.peek().f0)) fittingReuseClusters.add(this.reuseClusters.get(i));
+			Cluster[] reuseClustersArr = (Cluster[]) this.reuseClusters.toArray();
+			for(int i = 0; i < reuseClustersArr.length; i++){
+				if(reuseClustersArr[i].fits(cluster.elements.peek().f0)) fittingReuseClusters.add(reuseClustersArr[i]);
 			}
 			if(fittingReuseClusters.size() > 0){
 				//randomly select reuseCluster
@@ -146,6 +151,22 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				//we now return just the old list of already processed clusters and don't remove any cluster, since no whole cluster has been released
 				return newClusters;
 			}
+		}
+
+		//release oldest tuple in cluster if it "is an outlier"
+		int m = 0;
+		int nElements = cluster.elements.size();
+		for(int i = 1; i < this.clusters.size(); i++){
+			if(cluster.elements.size() < this.clusters.get(i).elements.size()){
+				m++;
+			}
+			nElements += this.clusters.get(i).elements.size();
+		}
+		if(m > 0.5 * this.clusters.size() || nElements < this.k){
+			this.suppress(cluster.elements.poll().f0);
+			if(cluster.elements.size() == 0) this.clusters.remove(0);
+
+			return newClusters;
 		}
 
 		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
@@ -202,6 +223,16 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			this.reuseClusters.add(c); // buffer EMPTY cluster for reuse
 		}
 
+		//update adaptive infoloss
+		Cluster[] reuseClustersArr = (Cluster[]) this.reuseClusters.toArray();
+		double infolossSum = 0;
+		int numSummed = 0;
+		for(int i = 0; i < reuseClustersArr.length || i < this.mu; i++){
+			infolossSum += reuseClustersArr[i].oldInfoLoss;
+			numSummed++;
+		}
+		this.threshold = infolossSum / numSummed;
+
 		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
 		this.clusters.remove(0);
 		return newClusters;
@@ -252,11 +283,33 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		return newClusters;
 	}
 
+	//returns a tuple with the global bounds as its entries
+	public Tuple suppress(Tuple t){
+		Tuple newT = Tuple.newInstance(t.getArity());
+
+		for(int i = 0; i < this.keys.length; i++){
+			newT.setField(new Tuple2<>(this.globLowerBounds[i], this.globUpperBounds[i]), this.keys[i]);
+		}
+
+		for(int i = 0; i < t.getArity(); i++){
+			if(newT.getField(i) == null) newT.setField(t.getField(i) ,i);
+		}
+
+		return newT;
+	}
+
 	//needed for sorting the groups that are created in "split"
 	static class ElementComparator implements Comparator<Tuple2<?, Double>> {
 
 		public int compare(Tuple2<?, Double> o1, Tuple2<?, Double> o2) {
 			return o1.f1.doubleValue() > o2.f1.doubleValue() ? 1 : -1;
+		}
+	}
+
+	static class ClusterComparator implements Comparator<Cluster>{
+
+		public int compare(Cluster c1, Cluster c2) {
+			return c1.timestamp > c2.timestamp ? 1 : -1;
 		}
 	}
 
