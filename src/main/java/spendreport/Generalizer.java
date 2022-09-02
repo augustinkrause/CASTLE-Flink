@@ -24,6 +24,9 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.util.Collector;
 
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.util.*;
 
@@ -298,6 +301,65 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		return newT;
 	}
 
+	//readObject, writeObject, readObjectNoData are functions that are called during serialization of instances of this class
+	private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+
+		out.writeObject(this.clusters);
+		out.writeObject(this.reuseClusters);
+
+		out.writeInt(this.globLowerBounds.length);
+		for(int i = 0; i < this.globLowerBounds.length; i++){
+			out.writeDouble(this.globLowerBounds[i]);
+		}
+		out.writeInt(this.globUpperBounds.length);
+		for(int i = 0; i < this.globUpperBounds.length; i++){
+			out.writeDouble(this.globUpperBounds[i]);
+		}
+
+		out.writeLong(this.delayConstraint);
+		out.writeDouble(this.threshold);
+		out.writeInt(this.k);
+		out.writeInt(this.mu);
+		out.writeInt(this.maxClusters);
+
+		out.writeInt(this.keys.length);
+		for(int i = 0; i < this.keys.length; i++){
+			out.writeInt(this.keys[i]);
+		}
+	}
+
+	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+		this.clusters = (ArrayList<Cluster>) in.readObject();
+		this.reuseClusters = (PriorityQueue<Cluster>) in.readObject();
+
+		int len = in.readInt();
+		this.globLowerBounds = new double[len];
+		for(int i = 0; i < len; i++){
+			this.globLowerBounds[i] = in.readDouble();
+		}
+		len = in.readInt();
+		this.globUpperBounds = new double[len];
+		for(int i = 0; i < len; i++){
+			this.globUpperBounds[i] = in.readDouble();
+		}
+
+		this.delayConstraint = in.readLong();
+		this.threshold = in.readDouble();
+		this.k = in.readInt();
+		this.mu = in.readInt();
+		this.maxClusters = in.readInt();
+
+		len = in.readInt();
+		this.keys = new int[len];
+		for(int i = 0; i < len; i++){
+			this.keys[i] = in.readInt();
+		}
+	}
+
+	private void readObjectNoData() throws ObjectStreamException {
+		throw new NotSerializableException("Serialization error in class " + this.getClass().getName());
+	}
+
 	//needed for sorting the groups that are created in "split"
 	static class ElementComparator implements Comparator<Tuple2<?, Double>> {
 
@@ -312,5 +374,4 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			return c1.timestamp > c2.timestamp ? 1 : -1;
 		}
 	}
-
 }

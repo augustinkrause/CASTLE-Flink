@@ -4,10 +4,15 @@ import org.apache.flink.util.StringUtils;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple2;
 
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectStreamException;
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-public class Cluster {
+public class Cluster implements Serializable {
 
     double[] lowerBounds;
     double[] upperBounds;
@@ -153,6 +158,62 @@ public class Cluster {
 
     public String toString(){
         return "Lower Bound: " + StringUtils.arrayAwareToString(this.lowerBounds) + ", Upper Bound: " + StringUtils.arrayAwareToString(this.upperBounds) + ", Size: " + this.elements.size();
+    }
+
+    //readObject, writeObject, readObjectNoData are functions that are called during serialization of instances of this class
+    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+
+        out.writeInt(this.lowerBounds.length);
+        for(int i = 0; i < this.lowerBounds.length; i++){
+            out.writeDouble(this.lowerBounds[i]);
+        }
+        out.writeInt(this.upperBounds.length);
+        for(int i = 0; i < this.upperBounds.length; i++){
+            out.writeDouble(this.upperBounds[i]);
+        }
+
+        out.writeInt(this.keys.length);
+        for(int i = 0; i < this.keys.length; i++){
+            out.writeInt(this.keys[i]);
+        }
+
+        out.writeDouble(this.oldInfoLoss);
+
+        out.writeLong(this.timestamp);
+
+        out.writeObject(this.elements);
+
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+
+        int len = in.readInt();
+        this.lowerBounds = new double[len];
+        for(int i = 0; i < len; i++){
+            this.lowerBounds[i] = in.readDouble();
+        }
+        len = in.readInt();
+        this.upperBounds = new double[len];
+        for(int i = 0; i < len; i++){
+            this.upperBounds[i] = in.readDouble();
+        }
+
+        len = in.readInt();
+        this.keys = new int[len];
+        for(int i = 0; i < len; i++){
+            this.keys[i] = in.readInt();
+        }
+
+        this.oldInfoLoss = in.readDouble();
+
+        this.timestamp = in.readLong();
+
+        this.elements = (PriorityQueue<Tuple2<Tuple, Long>>) in.readObject();
+
+    }
+
+    private void readObjectNoData() throws ObjectStreamException {
+        throw new NotSerializableException("Serialization error in class " + this.getClass().getName());
     }
 
     static class ElementComparator implements Comparator<Tuple2<?, Long>> {
