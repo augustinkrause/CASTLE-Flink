@@ -216,7 +216,7 @@ public class Cluster implements Serializable {
         throw new NotSerializableException("Serialization error in class " + this.getClass().getName());
     }
 
-    static class ElementComparator implements Comparator<Tuple2<?, Long>> {
+    static class ElementComparator implements Comparator<Tuple2<?, Long>>, Serializable{
 
         @Override
         public int compare(Tuple2<?, Long> o1, Tuple2<?, Long> o2) {

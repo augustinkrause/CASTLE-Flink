@@ -137,7 +137,8 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			//find fitting reuseClusters
 			ArrayList<Cluster> fittingReuseClusters = new ArrayList<>();
 
-			Cluster[] reuseClustersArr = (Cluster[]) this.reuseClusters.toArray();
+			Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
+			reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
 			for(int i = 0; i < reuseClustersArr.length; i++){
 				if(reuseClustersArr[i].fits(cluster.elements.peek().f0)) fittingReuseClusters.add(reuseClustersArr[i]);
 			}
@@ -227,10 +228,11 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		}
 
 		//update adaptive infoloss
-		Cluster[] reuseClustersArr = (Cluster[]) this.reuseClusters.toArray();
+		Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
+		reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
 		double infolossSum = 0;
 		int numSummed = 0;
-		for(int i = 0; i < reuseClustersArr.length || i < this.mu; i++){
+		for(int i = 0; i < reuseClustersArr.length && i < this.mu; i++){
 			infolossSum += reuseClustersArr[i].oldInfoLoss;
 			numSummed++;
 		}
@@ -361,14 +363,14 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 	}
 
 	//needed for sorting the groups that are created in "split"
-	static class ElementComparator implements Comparator<Tuple2<?, Double>> {
+	static class ElementComparator implements Comparator<Tuple2<?, Double>>, Serializable {
 
 		public int compare(Tuple2<?, Double> o1, Tuple2<?, Double> o2) {
 			return o1.f1.doubleValue() > o2.f1.doubleValue() ? 1 : -1;
 		}
 	}
 
-	static class ClusterComparator implements Comparator<Cluster>{
+	static class ClusterComparator implements Comparator<Cluster>, Serializable{
 
 		public int compare(Cluster c1, Cluster c2) {
 			return c1.timestamp > c2.timestamp ? 1 : -1;
