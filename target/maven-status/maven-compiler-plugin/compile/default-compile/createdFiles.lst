@@ -1,4 +1,5 @@
 spendreport/Generalizer$ClusterComparator.class
 spendreport/TransactionGeneralizationJob.class
 spendreport/Generalizer.class
+spendreport/CSVParser.class
 spendreport/Cluster.class

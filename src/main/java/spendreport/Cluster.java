@@ -140,7 +140,7 @@ public class Cluster implements Serializable {
         }
 
         for(int i = 0; i < t.getArity(); i++){
-            if(newT.getField(i) == null) newT.setField(t.getField(i) ,i);
+            if(newT.getField(i) == null) newT.setField(t.getField(i), i);
         }
 
         return newT;

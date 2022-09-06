@@ -150,8 +150,8 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 				if(cluster.elements.size() == 0) this.clusters.remove(0);
 
-				System.out.print("Reused: ");
-				System.out.println(fittingReuseClusters.get(index));
+				/*System.out.print("Reused: ");
+				System.out.println(fittingReuseClusters.get(index));*/
 				//we now return just the old list of already processed clusters and don't remove any cluster, since no whole cluster has been released
 				return newClusters;
 			}
