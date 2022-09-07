@@ -236,14 +236,21 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		//release all the created clusters
 		for(Cluster c : splitClusters){
 
+			boolean kAnonymous = c.elements.size() >= k;
 			while(!c.elements.isEmpty()){
-				Tuple generalizedElement = c.generalize(c.elements.poll().f0);
+				Tuple generalizedElement;
+				if(kAnonymous) {
+					generalizedElement = c.generalize(c.elements.poll().f0);
+				}else{
+					generalizedElement = this.suppress(c.elements.poll().f0);
+				}
 
 				//output the generalized element
 				//System.out.println(generalizedElement);
 				collector.collect(generalizedElement);
 			}
-			this.reuseClusters.add(c); // buffer EMPTY cluster for reuse
+
+			if(kAnonymous) this.reuseClusters.add(c); // buffer EMPTY, k-anonymous cluster for reuse
 		}
 
 		//update adaptive infoloss
