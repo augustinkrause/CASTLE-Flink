@@ -62,9 +62,12 @@ public class TransactionGeneralizationJob {
 		int[] keys = new int[1];
 		keys[0] = 5;
 		DataStream<Tuple> generalizedTransactions = enrichedTuples
-			.process(new Generalizer(10,2500, 10, 15, keys))
-			.returns(Types.TUPLE())
+			.process(new Generalizer(10,2500, 10, 15, keys, types))
 			.name("Generalizer");
+
+		generalizedTransactions
+				.addSink(new FinalSink())
+				.name("Checking Uniqueness");
 
 
 		env.execute("Transactions Generalization");

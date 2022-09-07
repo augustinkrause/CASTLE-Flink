@@ -18,6 +18,9 @@
 
 package spendreport;
 
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.api.java.tuple.Tuple;
@@ -33,7 +36,7 @@ import java.util.*;
 /**
  *
  */
-public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> implements Serializable {
+public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> implements Serializable, ResultTypeQueryable {
 
 	private ArrayList<Cluster> clusters;
 	private PriorityQueue<Cluster> reuseClusters; //these clusters will have been previously published and thus at some point have been k-anonymous
@@ -49,8 +52,9 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 	private int[] keys;
 
 	private Collector<Tuple> collector; //TODO: For now only a test
+	private TypeInformation[] types;
 
-	public Generalizer(int k, long delayConstraint, int mu, int maxClusters, int[] keys){
+	public Generalizer(int k, long delayConstraint, int mu, int maxClusters, int[] keys, TypeInformation[] types){
 		this.clusters = new ArrayList<>();
 		this.reuseClusters = new PriorityQueue<>(new ClusterComparator());
 		this.delayConstraint = delayConstraint; //when a new element comes in, any tuple older than this constraint should be released
@@ -67,6 +71,8 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			this.globLowerBounds[i] = Double.POSITIVE_INFINITY;
 			this.globUpperBounds[i] = Double.NEGATIVE_INFINITY;
 		}
+
+		this.types = types;
 	}
 	// This hook is executed before the processing starts, kind of as a set-up
 	@Override
@@ -186,7 +192,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			return newClusters;
 		}
 
-		while(cluster.elements.size() < this.k && this.clusters.size() > 1){
+		while(cluster.elements.size() < this.k && (this.clusters.size() > 1 || newClusters.size() > 0)){
 			//in this case the cluster is not yet "k-anonymous"
 			//merge with cluster that requires minimal enlargement
 			double minimum = Double.POSITIVE_INFINITY;
@@ -234,7 +240,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				Tuple generalizedElement = c.generalize(c.elements.poll().f0);
 
 				//output the generalized element
-				System.out.println(generalizedElement);
+				//System.out.println(generalizedElement);
 				collector.collect(generalizedElement);
 			}
 			this.reuseClusters.add(c); // buffer EMPTY cluster for reuse
@@ -267,6 +273,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			c.elements.toArray(elementsArray);
 			Tuple2<Tuple, Long> t = elementsArray[index];
 			Cluster newCluster = new Cluster(t, this.keys); //form a new cluster over the randomly picked element
+			c.elements.remove(t);
 
 			//find k-1 NNs
 			PriorityQueue<Tuple2<Tuple2<Tuple, Long>, Double>> sortedElements = new PriorityQueue<>(new ElementComparator()); //used for sorting by distance to t
@@ -314,6 +321,18 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		}
 
 		return newT;
+	}
+
+	@Override
+	public TypeInformation getProducedType() {
+		TypeInformation[] outputTypes = new TypeInformation[this.types.length];
+		for(int i = 0; i < this.keys.length; i++){
+			outputTypes[this.keys[i]] = Types.TUPLE(Types.DOUBLE, Types.DOUBLE);
+		}
+		for(int i = 0; i < this.types.length; i++){
+			if(outputTypes[i] == null) outputTypes[i] = this.types[i];
+		}
+		return Types.TUPLE(outputTypes);
 	}
 
 	//readObject, writeObject, readObjectNoData are functions that are called during serialization of instances of this class

@@ -2,4 +2,4 @@
 /Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/TransactionGeneralizationJob.java
 /Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/Cluster.java
 /Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/CSVParser.java
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/TestSink.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/FinalSink.java
