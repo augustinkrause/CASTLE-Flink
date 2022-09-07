@@ -48,6 +48,8 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 	private int[] keys;
 
+	private Collector<Tuple> collector; //TODO: For now only a test
+
 	public Generalizer(int k, long delayConstraint, int mu, int maxClusters, int[] keys){
 		this.clusters = new ArrayList<>();
 		this.reuseClusters = new PriorityQueue<>(new ClusterComparator());
@@ -72,13 +74,24 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 	}
 
+	@Override
+	public void close(){
+		ArrayList<Cluster> newClusters = new ArrayList<>();
+
+		//release remaining clusters
+		while(!this.clusters.isEmpty()){
+			newClusters = this.release(this.clusters.get(0), newClusters, this.collector);
+		}
+	}
+
 	// This hook is executed on each element of the data stream
 	@Override
 	public void processElement(
 			Tuple2<Tuple, Long> element,
 			Context context,
 			Collector<Tuple> collector) throws Exception {
-		
+
+		this.collector = collector;
 		//update ALL global bounds
 		for(int i = 0; i < this.keys.length; i++){
 			//update global bounds (upper and lower bound over the whole processing period)
