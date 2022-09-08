@@ -78,6 +78,7 @@ public class Cluster implements Serializable {
         this.oldInfoLoss = newInfoLoss;
     }
 
+    //by default this function returns a difference, this can explicitly be turned off (see next signature)
     public double lossDueToEnlargement(Tuple element, double[] globLowerBounds, double[] globUpperBounds){
         double newInfoLoss = 0;
         for(int i = 0; i < this.keys.length; i++){
@@ -99,8 +100,33 @@ public class Cluster implements Serializable {
         return newInfoLoss - this.oldInfoLoss;
     }
 
+    public double lossDueToEnlargement(Tuple element, double[] globLowerBounds, double[] globUpperBounds, boolean difference){
+        double newInfoLoss = 0;
+        for(int i = 0; i < this.keys.length; i++){
+            try {
+                double newLowerBound = this.lowerBounds[i];
+                if (newLowerBound > ((Number) element.getField(this.keys[i])).doubleValue())
+                    newLowerBound = ((Number) element.getField(this.keys[i])).doubleValue();
+
+                double newUpperBound = this.upperBounds[i];
+                if (newUpperBound < ((Number) element.getField(this.keys[i])).doubleValue())
+                    newUpperBound = ((Number) element.getField(this.keys[i])).doubleValue();
+
+                newInfoLoss += (newUpperBound - newLowerBound) / (globUpperBounds[i] - globLowerBounds[i]);
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if(difference){
+            return newInfoLoss - this.oldInfoLoss;
+        }else{
+            return newInfoLoss;
+        }
+    }
+
     public Boolean testEnlargement(Tuple element, double threshold, double[] globLowerBounds, double[] globUpperBounds){
-        return this.lossDueToEnlargement(element, globLowerBounds, globUpperBounds) <= threshold;
+        return this.lossDueToEnlargement(element, globLowerBounds, globUpperBounds, false) <= threshold;
     }
 
     public void merge(Cluster c, double[] globLowerBounds, double[] globUpperBounds){

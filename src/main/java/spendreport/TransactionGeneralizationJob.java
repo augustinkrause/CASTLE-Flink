@@ -65,9 +65,9 @@ public class TransactionGeneralizationJob {
 			.process(new Generalizer(10,2500, 10, 15, keys, types))
 			.name("Generalizer");
 
-		generalizedTransactions
+		/*generalizedTransactions
 				.addSink(new FinalSink())
-				.name("Checking Uniqueness");
+				.name("Checking Uniqueness");*/
 
 
 		env.execute("Transactions Generalization");

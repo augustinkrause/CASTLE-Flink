@@ -12,12 +12,12 @@ public class FinalSink implements SinkFunction<Tuple> {
     private int nNotUnique = 0;
 
     public FinalSink(){
-        this.uniquenessMap = new HashMap<>();
+        //this.uniquenessMap = new HashMap<>();
     }
 
     @Override
     public void invoke(Tuple value, Context context) throws Exception {
-        this.nReceived++;
+        /*this.nReceived++;
 
         if(this.uniquenessMap.get(value.getField(0)) != null){
             nNotUnique++;
@@ -29,12 +29,10 @@ public class FinalSink implements SinkFunction<Tuple> {
         }
 
         System.out.println("received: " + nReceived);
-        System.out.println("duplicates: " + nNotUnique);
+        System.out.println("duplicates: " + nNotUnique);*/
     }
 
     @Override
     public void finish(){
-        System.out.println("received: " + nReceived);
-        System.out.println("duplicates: " + nNotUnique);
     }
 }

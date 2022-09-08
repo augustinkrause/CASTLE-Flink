@@ -88,6 +88,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		while(!this.clusters.isEmpty()){
 			newClusters = this.release(this.clusters.get(0), newClusters, this.collector);
 		}
+
 	}
 
 	// This hook is executed on each element of the data stream
@@ -123,6 +124,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 			//only add the new element to the found cluster if it satisfies our information loss constraint
 			//otherwise create a new cluster around it
+			//TODO: enlargement relative to wrong infoloss
 			if(this.clusters.get(minIndex).testEnlargement(element.f0, this.threshold, this.globLowerBounds, this.globUpperBounds) || this.clusters.size() >= this.maxClusters){
 				this.clusters.get(minIndex).addTuple(element, this.globLowerBounds, this.globUpperBounds);
 			}else{
@@ -165,12 +167,11 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				//randomly select reuseCluster
 				int index = new Random().nextInt(fittingReuseClusters.size());
 				Tuple generalizedElement = fittingReuseClusters.get(index).generalize(cluster.elements.poll().f0);
+				System.out.println(generalizedElement);
 				collector.collect(generalizedElement);
 
 				if(cluster.elements.size() == 0) this.clusters.remove(0);
 
-				/*System.out.print("Reused: ");
-				System.out.println(fittingReuseClusters.get(index));*/
 				//we now return just the old list of already processed clusters and don't remove any cluster, since no whole cluster has been released
 				return newClusters;
 			}
@@ -186,7 +187,10 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			nElements += this.clusters.get(i).elements.size();
 		}
 		if(m > 0.5 * this.clusters.size() || nElements < this.k){
-			this.suppress(cluster.elements.poll().f0);
+			Tuple generalizedElement = this.suppress(cluster.elements.poll().f0);
+			System.out.println(generalizedElement);
+			collector.collect(generalizedElement);
+
 			if(cluster.elements.size() == 0) this.clusters.remove(0);
 
 			return newClusters;
@@ -246,23 +250,24 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				}
 
 				//output the generalized element
-				//System.out.println(generalizedElement);
+				System.out.println(generalizedElement);
 				collector.collect(generalizedElement);
 			}
 
 			if(kAnonymous) this.reuseClusters.add(c); // buffer EMPTY, k-anonymous cluster for reuse
-		}
 
-		//update adaptive infoloss
-		Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
-		reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
-		double infolossSum = 0;
-		int numSummed = 0;
-		for(int i = 0; i < reuseClustersArr.length && i < this.mu; i++){
-			infolossSum += reuseClustersArr[i].oldInfoLoss;
-			numSummed++;
+			//update adaptive infoloss
+			Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
+			reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
+			double infolossSum = 0;
+			int numSummed = 0;
+			for(int i = 0; i < reuseClustersArr.length && i < this.mu; i++){
+				infolossSum += reuseClustersArr[i].oldInfoLoss;
+				numSummed++;
+			}
+			this.threshold = infolossSum / numSummed;
+			if(c.oldInfoLoss >= this.threshold && kAnonymous) this.reuseClusters.remove(c);
 		}
-		this.threshold = infolossSum / numSummed;
 
 		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
 		this.clusters.remove(0);
@@ -277,7 +282,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 		while(c.elements.size() >= this.k){
 			int index = new Random().nextInt(c.elements.size());
 			Tuple2<Tuple, Long>[] elementsArray = new Tuple2[c.elements.size()];
-			c.elements.toArray(elementsArray);
+			elementsArray = c.elements.toArray(elementsArray);
 			Tuple2<Tuple, Long> t = elementsArray[index];
 			Cluster newCluster = new Cluster(t, this.keys); //form a new cluster over the randomly picked element
 			c.elements.remove(t);
