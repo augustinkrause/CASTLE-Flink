@@ -68,13 +68,13 @@ public class Cluster implements Serializable {
                     this.upperBounds[i] = ((Number) element.f0.getField(this.keys[i])).doubleValue();
                 }
 
-                this.elements.add(element);
                 newInfoLoss += (this.upperBounds[i] - this.lowerBounds[i]) / (globUpperBounds[i] - globLowerBounds[i]);
             }catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
+        this.elements.add(element);
         this.oldInfoLoss = newInfoLoss;
     }
 
