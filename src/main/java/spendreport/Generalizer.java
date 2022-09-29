@@ -124,7 +124,6 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 
 			//only add the new element to the found cluster if it satisfies our information loss constraint
 			//otherwise create a new cluster around it
-			//TODO: enlargement relative to wrong infoloss
 			if(this.clusters.get(minIndex).testEnlargement(element.f0, this.threshold, this.globLowerBounds, this.globUpperBounds) || this.clusters.size() >= this.maxClusters){
 				this.clusters.get(minIndex).addTuple(element, this.globLowerBounds, this.globUpperBounds);
 			}else{
@@ -259,12 +258,15 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			//update adaptive infoloss
 			//TODO: CANT USE PQ for sorting
 			Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
-			reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
 			double infolossSum = 0;
 			int numSummed = 0;
 			for(int i = 0; i < reuseClustersArr.length && i < this.mu; i++){
+				reuseClustersArr[i] = this.reuseClusters.poll();
 				infolossSum += reuseClustersArr[i].oldInfoLoss;
 				numSummed++;
+			}
+			for(int i = 0; i < reuseClustersArr.length && i < this.mu; i++){
+				this.reuseClusters.add(reuseClustersArr[i]);
 			}
 			this.threshold = infolossSum / numSummed;
 			if(c.oldInfoLoss >= this.threshold && kAnonymous) this.reuseClusters.remove(c);
