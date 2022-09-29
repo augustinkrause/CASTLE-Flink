@@ -257,6 +257,7 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			if(kAnonymous) this.reuseClusters.add(c); // buffer EMPTY, k-anonymous cluster for reuse
 
 			//update adaptive infoloss
+			//TODO: CANT USE PQ for sorting
 			Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
 			reuseClustersArr = this.reuseClusters.toArray(reuseClustersArr);
 			double infolossSum = 0;
