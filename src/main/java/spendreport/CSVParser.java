@@ -58,7 +58,7 @@ public class CSVParser implements MapFunction<String, Tuple>, ResultTypeQueryabl
         }
 
         try{
-            Tuple t = this.addPID? Tuple.newInstance(this.nCols) : Tuple.newInstance(this.nCols);
+            Tuple t = this.addPID? Tuple.newInstance(this.nCols + 1) : Tuple.newInstance(this.nCols);
             if(this.addPID){
                 t.setField(count, 0);
             }
