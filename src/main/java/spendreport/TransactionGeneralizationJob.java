@@ -51,7 +51,7 @@ public class TransactionGeneralizationJob {
 		types[7] = Types.DOUBLE;
 		types[8] = Types.STRING;
 		DataStream<Tuple> tuples = lines
-				.map(new CSVParser(9, types, "|"))
+				.map(new CSVParser(9, types, "|", false, 1000))
 				.name("parsing");
 
 		DataStream<Tuple2<Tuple, Long>> enrichedTuples = tuples

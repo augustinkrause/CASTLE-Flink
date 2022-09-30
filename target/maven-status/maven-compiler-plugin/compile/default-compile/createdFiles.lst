@@ -2,5 +2,5 @@ spendreport/Generalizer$ClusterComparator.class
 spendreport/FinalSink.class
 spendreport/TransactionGeneralizationJob.class
 spendreport/Generalizer.class
-spendreport/CSVParser.class
 spendreport/Cluster.class
+spendreport/CSVParser.class
