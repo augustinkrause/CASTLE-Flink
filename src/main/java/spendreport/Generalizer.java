@@ -151,10 +151,12 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 	//releases a cluster and if necessary k-anonymizes it first
 	private ArrayList<Cluster> release(Cluster cluster, ArrayList<Cluster> newClusters, Collector<Tuple> collector){
 
-		//check if reuse FOR THE OLDEST TUPLE IN THE CLUSTER is possible (only if the to-be-released cluster is not itself k-anonymous)
-		//in this case we know the oldest tuple in the cluster has expired and should be released
-		if(cluster.elements.size() < this.k){
-			//find fitting reuseClusters
+		if(cluster.elements.size() >= k){
+			this.publish(cluster, collector);
+		}else{
+
+			//check if reuse FOR THE OLDEST TUPLE IN THE CLUSTER is possible (only if the to-be-released cluster is not itself k-anonymous)
+			//in this case we know the oldest tuple in the cluster has expired and should be released
 			ArrayList<Cluster> fittingReuseClusters = new ArrayList<>();
 
 			Cluster[] reuseClustersArr = new Cluster[this.reuseClusters.size()];
@@ -174,57 +176,65 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 				//we now return just the old list of already processed clusters and don't remove any cluster, since no whole cluster has been released
 				return newClusters;
 			}
-		}
 
-		//release oldest tuple in cluster if it "is an outlier"
-		int m = 0;
-		int nElements = cluster.elements.size();
-		for(int i = 1; i < this.clusters.size(); i++){
-			if(cluster.elements.size() < this.clusters.get(i).elements.size()){
-				m++;
-			}
-			nElements += this.clusters.get(i).elements.size();
-		}
-		if(m > 0.5 * this.clusters.size() || nElements < this.k){
-			Tuple generalizedElement = this.suppress(cluster.elements.poll().f0);
-			System.out.println(generalizedElement);
-			collector.collect(generalizedElement);
-
-			if(cluster.elements.size() == 0) this.clusters.remove(0);
-
-			return newClusters;
-		}
-
-		while(cluster.elements.size() < this.k && (this.clusters.size() > 1 || newClusters.size() > 0)){
-			//in this case the cluster is not yet "k-anonymous"
-			//merge with cluster that requires minimal enlargement
-			double minimum = Double.POSITIVE_INFINITY;
-			int minIndex = 0;
-			boolean minNewCluster = false; //indicates if the minIndex is relative to this.clusters or newClusters
+			//release oldest tuple in cluster if it "is an outlier"
+			int m = 0;
+			int nElements = cluster.elements.size();
 			for(int i = 1; i < this.clusters.size(); i++){
-				if(cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
-					minimum = cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds);
-					minIndex = i;
+				if(cluster.elements.size() < this.clusters.get(i).elements.size()){
+					m++;
 				}
+				nElements += this.clusters.get(i).elements.size();
 			}
-			//we need to loop through previously processed clusters as well
-			for(int i = 0; i < newClusters.size(); i++){
-				if(cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
-					minimum = cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds);
-					minIndex = i;
-					minNewCluster = true;
-				}
-			}
-			if(minNewCluster){
-				cluster.merge(newClusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
-				newClusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
-			}else{
-				cluster.merge(this.clusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
-				this.clusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+			if(m > 0.5 * this.clusters.size() || nElements < this.k){
+				Tuple generalizedElement = this.suppress(cluster.elements.poll().f0);
+				System.out.println(generalizedElement);
+				collector.collect(generalizedElement);
+
+				if(cluster.elements.size() == 0) this.clusters.remove(0);
+
+				return newClusters;
 			}
 
+			while(cluster.elements.size() < this.k && (this.clusters.size() > 1 || newClusters.size() > 0)){
+				//in this case the cluster is not yet "k-anonymous"
+				//merge with cluster that requires minimal enlargement
+				double minimum = Double.POSITIVE_INFINITY;
+				int minIndex = 0;
+				boolean minNewCluster = false; //indicates if the minIndex is relative to this.clusters or newClusters
+				for(int i = 1; i < this.clusters.size(); i++){
+					if(cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
+						minimum = cluster.lossDueToMerge(this.clusters.get(i), this.globLowerBounds, this.globUpperBounds);
+						minIndex = i;
+					}
+				}
+				//we need to loop through previously processed clusters as well
+				for(int i = 0; i < newClusters.size(); i++){
+					if(cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds) < minimum){
+						minimum = cluster.lossDueToMerge(newClusters.get(i), this.globLowerBounds, this.globUpperBounds);
+						minIndex = i;
+						minNewCluster = true;
+					}
+				}
+				if(minNewCluster){
+					cluster.merge(newClusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
+					newClusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+				}else{
+					cluster.merge(this.clusters.get(minIndex), this.globLowerBounds, this.globUpperBounds);
+					this.clusters.remove(minIndex); //since we merged the two clusters, they both in the end need to get removed from our cluster list
+				}
+
+			}
+
+			this.publish(cluster, collector);
 		}
 
+		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
+		this.clusters.remove(0);
+		return newClusters;
+	}
+
+	public void publish(Cluster cluster, Collector<Tuple> collector){
 		//splits become possible if the cluster is of size at least 2k
 		ArrayList<Cluster> splitClusters;
 		if(cluster.elements.size() >= 2 * this.k){
@@ -270,10 +280,6 @@ public class Generalizer extends ProcessFunction<Tuple2<Tuple, Long>, Tuple> imp
 			this.threshold = infolossSum / numSummed;
 			if(c.oldInfoLoss >= this.threshold && kAnonymous) this.reuseClusters.remove(c);
 		}
-
-		//we always process the first cluster in the cluster list -> that cluster will have definitely been released and thus needs to be removed
-		this.clusters.remove(0);
-		return newClusters;
 	}
 
 	//this performs the splitting specified in the CASTLE algorithm WITHOUT adhering to l-diversity principle
