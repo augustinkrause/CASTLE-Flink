@@ -1,6 +1,8 @@
-spendreport/Generalizer$ClusterComparator.class
-spendreport/FinalSink.class
-spendreport/TransactionGeneralizationJob.class
-spendreport/Generalizer.class
-spendreport/Cluster.class
-spendreport/CSVParser.class
+castle/Cluster.class
+castle/FinalSink.class
+castle/Cluster$ElementComparator.class
+castle/Generalizer$ElementComparator.class
+castle/Generalizer.class
+castle/TransactionGeneralizationJob.class
+castle/CSVParser.class
+castle/Generalizer$ClusterComparator.class

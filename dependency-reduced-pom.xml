@@ -88,7 +88,7 @@
               </filters>
               <transformers>
                 <transformer>
-                  <mainClass>spendreport.TransactionGeneralizationJob</mainClass>
+                  <mainClass>castle.TransactionGeneralizationJob</mainClass>
                 </transformer>
               </transformers>
             </configuration>
