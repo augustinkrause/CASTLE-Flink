@@ -1,5 +1,9 @@
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/Generalizer.java
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/TransactionGeneralizationJob.java
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/Cluster.java
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/CSVParser.java
-/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/spendreport/FinalSink.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/throughputUtils/ThroughputStatistics.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/castle/CSVParser.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/castle/Generalizer.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/castle/TransactionGeneralizationJob.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/castle/Cluster.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/castle/FinalSink.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/throughputUtils/ParallelThroughputStatistics.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/datasources/NYCTaxiRideSource.java
+/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/firstTest/src/main/java/throughputUtils/ParallelThroughputLogger.java

@@ -6,13 +6,17 @@
   <component name="ChangeListManager">
     <list default="true" id="0e1bcc2d-cb3a-4b91-a155-690aa0ca1673" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dependency-reduced-pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/dependency-reduced-pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/CSVParser.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/CSVParser.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/Cluster.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/Cluster.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/FinalSink.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/FinalSink.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/Generalizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/Generalizer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/spendreport/TransactionGeneralizationJob.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/TransactionGeneralizationJob.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/castle/Generalizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/Generalizer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/castle/TransactionGeneralizationJob.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/castle/TransactionGeneralizationJob.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/FirstGeneralizer-0.1.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/castle/Generalizer$ClusterComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/castle/Generalizer$ClusterComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/castle/Generalizer$ElementComparator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/castle/Generalizer$ElementComparator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/castle/Generalizer.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/castle/Generalizer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/castle/TransactionGeneralizationJob.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/castle/TransactionGeneralizationJob.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/original-FirstGeneralizer-0.1.jar" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

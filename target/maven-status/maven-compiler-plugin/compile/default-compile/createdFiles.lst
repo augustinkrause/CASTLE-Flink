@@ -1,8 +1,12 @@
-castle/Cluster.class
+throughputUtils/ThroughputStatistics.class
+throughputUtils/ParallelThroughputLogger.class
 castle/FinalSink.class
+datasources/NYCTaxiRideSource.class
 castle/Cluster$ElementComparator.class
 castle/Generalizer$ElementComparator.class
+castle/Generalizer$ClusterComparator.class
+castle/Cluster.class
+throughputUtils/ParallelThroughputStatistics.class
 castle/Generalizer.class
 castle/TransactionGeneralizationJob.class
 castle/CSVParser.class
-castle/Generalizer$ClusterComparator.class
