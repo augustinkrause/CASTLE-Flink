@@ -105,7 +105,7 @@ public class NYCTaxiRideSource implements ParallelSourceFunction<Tuple>, ResultT
      * in a serving speed which is proportional to the specified serving speed factor.
      */
     public NYCTaxiRideSource(long runtime, int throughput, final List<Tuple2<Long, Long>> gaps) {
-        this.dataFilePath = "/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/data/nycTaxiRides.gz";
+        this.dataFilePath = "./own_projects/data/nycTaxiRides.gz";
 //        this.dataFilePath = "EDADS/Data/nycTaxiRides.gz";
         this.throughput = throughput;
         this.gaps = gaps;
@@ -113,7 +113,7 @@ public class NYCTaxiRideSource implements ParallelSourceFunction<Tuple>, ResultT
     }
 
     public NYCTaxiRideSource(long runtime, int throughput) {
-        this.dataFilePath = "/Users/Augustin/Desktop/augustin/uni/Bachelor Thesis/flink-1.14.4/own_projects/data/nycTaxiRides.gz";
+        this.dataFilePath = "./own_projects/data/nycTaxiRides.gz";
 //        this.dataFilePath = "EDADS/Data/nycTaxiRides.gz";
         this.throughput = throughput;
         this.gaps = new ArrayList<>();
