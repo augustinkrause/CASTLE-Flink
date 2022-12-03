@@ -25,6 +25,7 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import throughputUtils.ParallelThroughputLogger;
 
 
 /**
@@ -64,11 +65,14 @@ public class TransactionGeneralizationJob {
 				.returns(Types.TUPLE(Types.TUPLE(types), Types.LONG)) //needed, bc in the lambda function type info gts lost
 				.name("Enrich with timestamp");
 
+		DataStream<Tuple2<Tuple, Long>> streamWithLogger = enrichedTuples
+				.flatMap(new ParallelThroughputLogger<>(1000, "ThroughputLogger"));
+
 		int[] keys = new int[3];
 		keys[0] = 0;
 		keys[1] = 1;
 		keys[2] = 5;
-		DataStream<Tuple> generalizedTransactions = enrichedTuples
+		DataStream<Tuple> generalizedTransactions = streamWithLogger
 			.process(new Generalizer(10,2500, 10, 15, keys, types))
 			.name("Generalizer");
 
